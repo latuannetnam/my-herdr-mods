@@ -7,7 +7,7 @@ import {
   mergeProviderResult,
   resolveActiveTab
 } from "./helpers.js";
-import { parseAgyQuota, agyProvider } from "./providers/agy.js";
+import { parseAgyQuota, agyProvider, AGY_USAGE_SCRIPT } from "./providers/agy.js";
 import { parseCodexQuota, codexProvider, CODEX_RPC_SCRIPT } from "./providers/codex.js";
 import { PROVIDERS } from "./providers/index.js";
 
@@ -144,6 +144,8 @@ test("mergeProviderResult preserves prior snapshot on transient error and provid
   assert.equal(afterErr.error, "timeout");
   assert.equal(afterErr.snapshot, prevSnap);
 
+  assert.ok(AGY_USAGE_SCRIPT.includes("AGY_CLI_DISABLE_AUTO_UPDATE: 'true'"));
+  assert.ok(AGY_USAGE_SCRIPT.includes("windowsHide: true"));
   assert.ok(CODEX_RPC_SCRIPT.includes("account/rateLimits/read"));
   assert.ok(CODEX_RPC_SCRIPT.includes("p.kill()"));
 
@@ -154,7 +156,8 @@ test("mergeProviderResult preserves prior snapshot on transient error and provid
   };
   await agyProvider.fetchRaw(fakeExec);
   await codexProvider.fetchRaw(fakeExec);
-  assert.equal(calls[0].cmd, "agy");
+  assert.equal(calls[0].cmd, "node");
+  assert.deepEqual(calls[0].args, ["-e", AGY_USAGE_SCRIPT]);
   assert.equal(calls[1].cmd, "node");
   assert.equal(PROVIDERS.length, 2);
 });

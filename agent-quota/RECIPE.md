@@ -39,7 +39,7 @@ This file is the brief: enough to build Agent Quota Hub from an empty folder. Th
 - **One self-opening mod**, `mods/agent-quota/`, with `mod.json` (`{ "place": "none", "overlay": { "kind": "popup", "width": 430, "height": 460 } }`), `main.js`, `helpers.js`, `helpers.test.js`, and `providers/` (`index.js`, `agy.js`, `codex.js`).
 - **Dual-role rendering in `main.js`:** Checks `Boolean(props()?.overlay)`. When false, renders the status bar block (`"id": "status"` in the layout); when true, renders the popup overlay. Putting both roles in one mod avoids cross-mod relative imports rejected by Herdr's per-mod directory sandbox.
 - **Provider 1 — Antigravity (`providers/agy.js`):**
-  - Runs `exec("agy", ["-p", "/usage", "--output-format", "json"], { timeout: 15000 })` (`0` tokens, `num_turns: 0`).
+  - Runs `exec("node", ["-e", AGY_USAGE_SCRIPT], { timeout: 15000 })`, which spawns `agy -p /usage --output-format json` (`0` tokens, `num_turns: 0`) via `spawnSync` with `env: { ...process.env, AGY_CLI_DISABLE_AUTO_UPDATE: 'true' }` and `windowsHide: true`.
   - Parses `command.data.groups` (`remaining_fraction` `0..1` and ISO `reset_time`).
 - **Provider 2 — OpenAI Codex (`providers/codex.js`):**
   - Runs `exec("node", ["-e", CODEX_RPC_SCRIPT], { timeout: 15000 })`, which spawns `codex app-server` (`cmd.exe /d /s /c "codex app-server"` on Windows with `windowsHide: true`, `sh -lc "codex app-server"` on POSIX), sends JSON-RPC `initialize` (`id: 1`) followed by `initialized` and `account/rateLimits/read` (`id: 2`), flushes the `id: 2` JSON response to stdout, closes stdin, and terminates the child (using `taskkill /PID <pid> /T /F` on Windows if the 12-second safety timeout fires).
@@ -51,7 +51,8 @@ This file is the brief: enough to build Agent Quota Hub from an empty folder. Th
 - Never use `.size_full()` on the popup root or `.flex_1().min_h(0)` on the popup body inside a `kind: "popup"` overlay—Herdr sizes popups to their content's intrinsic height, so flex-1 children collapse to `0px`. Use `.w_full()` on the root, `.max_h(360).overflow_y_scrollbar()` on the body, and `.flex_none()` on every header item and card.
 - Herdr draws the outer border and shadow on `kind: "popup"` overlays; do not put `.border_1()` on the popup root or it will draw a double border.
 - Codex reports `usedPercent` (used), whereas Antigravity reports `remaining_fraction` (remaining). Always normalize to remaining quota so `100%` means full quota available across every provider.
-- Disclose to the user before installing that this mod runs `agy -p "/usage" --output-format json` and `node -e ...` (`codex app-server`) every 3 minutes via `exec()`.
+- Herdr's `exec(cmd, args, opts)` accepts `{ cwd, on, timeout }` and does not pass custom `env` overrides. Wrap `agy -p /usage --output-format json` in `node -e` (`spawnSync` with `AGY_CLI_DISABLE_AUTO_UPDATE: 'true'` and `windowsHide: true`); otherwise, on Windows 11, `agy` spawns a `DETACHED_PROCESS` `--bg-updater` every 15 minutes whose child `agy --version` lacks `CREATE_NO_WINDOW` and briefly flashes a visible Windows Terminal window.
+- Disclose to the user before installing that this mod runs `node -e ...` (`agy -p /usage --output-format json` and `codex app-server`) every 3 minutes via `exec()`.
 
 ## Done when
 

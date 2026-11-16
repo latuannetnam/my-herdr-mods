@@ -91,10 +91,23 @@ export function parseAgyQuota(rawOutput, nowMs = Date.now()) {
   };
 }
 
+export const AGY_USAGE_SCRIPT = [
+  "const { spawnSync } = require('node:child_process');",
+  "const r = spawnSync('agy', ['-p', '/usage', '--output-format', 'json'], {",
+  "  env: { ...process.env, AGY_CLI_DISABLE_AUTO_UPDATE: 'true' },",
+  "  windowsHide: true,",
+  "  timeout: 14000,",
+  "  maxBuffer: 8 * 1024 * 1024",
+  "});",
+  "if (r.stdout) process.stdout.write(r.stdout);",
+  "if (r.stderr) process.stderr.write(r.stderr);",
+  "process.exit(r.status ?? 1);"
+].join(" ");
+
 export const agyProvider = {
   id: "agy",
   name: "Antigravity",
   shortLabel: "AGY",
-  fetchRaw: exec => exec("agy", ["-p", "/usage", "--output-format", "json"], { timeout: 15000 }),
+  fetchRaw: exec => exec("node", ["-e", AGY_USAGE_SCRIPT], { timeout: 15000 }),
   parse: parseAgyQuota
 };
